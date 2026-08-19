@@ -1,7 +1,7 @@
 import { Command, Flags } from "@oclif/core";
 import process from 'node:process';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
+import * as path from 'node:path'; //To process correctly the path format
 import { select } from '@inquirer/prompts'; //To communicate with the CLI
 // Imports native Node.js moduels for the file system if you need them
 
