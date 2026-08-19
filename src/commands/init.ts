@@ -18,6 +18,23 @@ export default class Init extends Command {
     public async run(): Promise<void> {
         const { flags } = await this.parse(Init);
 
+        const configPath = path.join(process.cwd(), 'aegis.config.json');
+
+        //Security check to do not overwrite the aegis.config.file
+        let fileExists = false;
+        
+        try {
+            await fs.access(configPath);
+            fileExists = true;
+        } catch(err) {
+            // File doesn't exist, which is fine
+        }
+
+        // We check this OUTSIDE the try-catch so this.error isn't swallowed
+        if (fileExists && !flags.force) {
+            this.error("The aegis.config.json file already exists. Use aegis init --force to overwrite it.");
+        }
+
         this.log('Initializing AegisCode...');
 
         try {
@@ -73,9 +90,8 @@ export default class Init extends Command {
             this.log('✅ AegisCode Configured! File aegis.config.json generated successfully.');
 
         } catch (err) {
-            this.log('[Error]: package.json not found!');
-            this.exit(1);
+            this.error(err instanceof Error ? err.message : String(err));
         }
-
     }
 }
+
