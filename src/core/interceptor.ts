@@ -1,27 +1,18 @@
 import { execSync } from 'node:child_process';
 
-
 export function getDiff(): string {
+    let output = '';
+
     try {
-        //We start by taking all the modified rows inside git diff using git diff --cached
-        const diffOutput = execSync('git diff --cached', { encoding: 'utf-8' });
+        //We try git diff --cached first when the developer packed the code with git add .
+        output = execSync('git diff --cached', { encoding: 'utf-8' });
 
-        //If it has any real useful text, go out and return it
-        if(diffOutput.trim() !== '') {
-            return diffOutput;
+        //If git diff --cached doesn't work out we use the fallback by using git diff normal
+        if(output.trim() === '') {
+            output = execSync('git diff', { encoding: 'utf-8' });
         }
 
-        //If the content is empty we execute a normal git diff without --cached flag
-        const normalDiffOutput = execSync('git diff', { encoding: 'utf-8' });
-
-        //If the normal dif command doesn't and is empty, we throw an error, it means the scanner didn't found any changes in the repository
-        if(normalDiffOutput.trim() === '') {
-            throw new Error('No changes detected in the repository.');
-        }
-
-        return normalDiffOutput;
-
-    } catch(err) {
+    } catch(err: unknown) {
         //Manage the error
         if (err instanceof Error) {
             throw new Error(`Failed to read Git diff: ${err.message}`);
@@ -30,4 +21,12 @@ export function getDiff(): string {
         //Manage unknown error occured
         throw new Error('Failed to read Git diff: Unknown error occurred');
     }
+
+    //If the output is completely empty it means there are no rows modified inside the base code
+    if (output.trim() === '') {
+        throw new Error('No changes detected in the repository.');
+    }
+
+    //If everything is allright and the scanner found something we return the output variabile converted with trim()
+    return output;
 }
