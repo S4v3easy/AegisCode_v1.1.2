@@ -4,12 +4,15 @@ export function getDiff(): string {
     let output = '';
 
     try {
-        //We try git diff --cached first when the developer packed the code with git add .
-        output = execSync('git diff --cached', { encoding: 'utf-8' });
-
-        //If git diff --cached doesn't work out we use the fallback by using git diff normal
-        if(output.trim() === '') {
-            output = execSync('git diff', { encoding: 'utf-8' });
+        
+        try {
+            //We found everything using this command but the project has to have a first commit
+            output = execSync('git diff HEAD', { encoding: 'utf-8' });
+        } catch {
+            //If it fails (e.g. newly created repo without first commit), we concatenate the two diffs
+            const staged = execSync('git diff --cached', { encoding: 'utf-8' });
+            const unstaged = execSync('git diff', { encoding: 'utf-8' });
+            output = staged + '\n' + unstaged;
         }
 
     } catch(err: unknown) {
