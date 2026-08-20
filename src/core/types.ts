@@ -8,5 +8,3 @@ export interface AegisAnalysisReport {
     violations: RuleViolation[];
     verdict: 'APPROVED' | 'REJECTED';
 }
-
-console.log("ciao zio")

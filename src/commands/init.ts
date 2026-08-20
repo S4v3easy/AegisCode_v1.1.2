@@ -41,6 +41,7 @@ export default class Init extends Command {
         try {
             const currentFolder = process.cwd();
 
+            //We call the scanEnviroment function inside scanner.ts to find all the tech stack of the project
             this.log('\n🔍 Scanning project environment...');
             const detectedStack = await scanEnvironment(currentFolder);
 

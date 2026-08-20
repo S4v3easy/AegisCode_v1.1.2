@@ -30,7 +30,7 @@ export default class Scan extends Command {
       //We incapsulate the getDiff function inside diff
       const diff = getDiff()
 
-      this.log('\n🧠 Connecting to Groq servers...AI is reading your code.')
+      this.log('\n🧠 Connecting to Groq servers... AI is analyzing your code.')
 
       //We send the diff string content to the analyzeDiff function to get the AI analyze it
       const aiResult = await analyzeDiff(diff, projectRules)
@@ -60,11 +60,18 @@ export default class Scan extends Command {
       }
 
     } catch (err: unknown) {
-      //If the print of getDiff function doesn't work out
+      //If the print of getDiff function doesn't work out or API fails
       if (err instanceof Error) {
-        this.error(err.message)
+        // Intercettiamo gli errori specifici di parsing o estrazione
+        if (err.message.includes('JSON Parse Error') || err.message.includes('No JSON block') || err.message.includes('Error during surgical JSON extraction')) {
+          this.warn('\n⚠️ AI generated malformed output or reached token limits.');
+          this.log('💡 Solution: Reasoning models occasionally hallucinate on formatting. Please run `aegis scan` again.');
+          process.exit(1);
+        } else {
+          this.error(err.message);
+        }
       } else {
-        this.error('Errore sconosciuto durante lo scan.')
+        this.error('An unknown error occurred during the scan.');
       }
     }
   }
