@@ -1,4 +1,5 @@
 import { Command, Flags } from "@oclif/core";
+import { scanEnvironment } from '../core/scanner.js';
 import process from 'node:process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path'; //To process correctly the path format
@@ -39,19 +40,9 @@ export default class Init extends Command {
 
         try {
             const currentFolder = process.cwd();
-            const packageJsonPath = path.join(currentFolder, 'package.json');
 
-            //Read package JSON
-            const contentFile = await fs.readFile(packageJsonPath, 'utf-8');
-
-            //Formatting the json text in an object
-            const packageJsonObject = JSON.parse(contentFile);
-
-            //Key Extraction from package JSON
-            const librerieBase = packageJsonObject.dependencies || {};
-            const librerieDev = packageJsonObject.devDependencies || {};
-
-            this.log('Libraries found:', Object.keys(librerieBase).join(', '));
+            this.log('\n🔍 Scanning project environment...');
+            const detectedStack = await scanEnvironment(currentFolder);
 
             const severityLevel = await select({
                 message: 'Select the severity level for AegisCode:',
@@ -81,8 +72,9 @@ export default class Init extends Command {
             const configData = {
                 aegisVersion: "0.1.0",
                 severity: severityLevel,
-                stack: Object.keys(librerieBase),
-                ai_rules: [] //Future rules for AI models
+                languages: detectedStack.languages, // <--- Nuova chiave!
+                stack: detectedStack.coreLibs,      // <--- Object.keys(librerieBase)
+                ai_rules: [] 
             };
 
             await fs.writeFile(configPath, JSON.stringify(configData, null, 2), 'utf-8'); //Correct format of aegis.package.json
