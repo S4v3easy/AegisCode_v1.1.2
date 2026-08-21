@@ -53,6 +53,7 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+                model: 'deepseek/deepseek-coder',
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: `Analyze this git diff:\n\n${diff}` }
