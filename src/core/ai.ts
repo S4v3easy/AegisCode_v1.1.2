@@ -1,15 +1,10 @@
 import 'dotenv/config';
-import Groq from "groq-sdk";
 import { AegisAnalysisReport } from './types.js';
 import { buildSystemPrompt } from './promptBuilder.js';//AI prompt builder function
 
-// Initialize the Groq client.
-// By default, the SDK automatically looks for the process.env.GROQ_API_KEY environment variable.
-const groq = new Groq();
-
 /**
- * Define the interface for the configuration file to enforce strict typing.
- */
+* Define the interface for the configuration file to enforce strict typing.
+*/
 interface AegisConfig {
     severity?: string;
     languages?: string[];
@@ -18,10 +13,10 @@ interface AegisConfig {
 }
 
 /**
- * Sends the git diff to Groq (Llama 3.3 70B) for architectural validation.
- * @param diff The raw git diff string extracted by the interceptor.
- * @returns The AI's judgement as a string.
- */
+* Sends the git diff to Groq (Llama 3.3 70B) for architectural validation.
+* @param diff The raw git diff string extracted by the interceptor.
+* @returns The AI's judgement as a string.
+*/
 
 export async function analyzeDiff(diff: string, projectRules: string): Promise<AegisAnalysisReport> {
     // Transform the raw string into a JSON object
@@ -42,20 +37,38 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
 
     // Initialize the prompt
     const systemPrompt = buildSystemPrompt(severity, stack, customRules);
+    const apiKey = process.env.OPEN_ROUTER_API_KEY;
+
+    if(!apiKey) {
+        throw new Error("OPENROUTER_API_KEY is missing in the environment variables.");
+    }
 
     try {
-        const response = await groq.chat.completions.create({
-            model: "qwen/qwen3.6-27b", // Fixed model ID based on the 2026 dashboard
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: `Analyze this git diff:\n\n${diff}` }
-            ],
-            temperature: 0.1, // Low temperature to maximize logical consistency and determinism
-            max_tokens: 4000, // Balanced for Groq Free Tier (8000 TPM limit)
-            // REMOVED response_format: { type: "json_object" } to allow <think> tags natively
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'HTTP-Referer': 'https://aegiscode.dev', // OpenRouter lo richiede
+                'X-Title': 'AegisCode CLI',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: `Analyze this git diff:\n\n${diff}` }
+                ],
+                temperature: 0.1,
+            })
         });
 
-        let content = response.choices[0]?.message?.content || '{}';
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(`API Error: ${errData.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        let content = data.choices[0]?.message?.content || '{}';
         
         // Preemptively remove the entire <think>...</think> block if present
         content = content.replace(/<think>[\s\S]*?<\/think>/gi, '');
