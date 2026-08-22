@@ -4,32 +4,32 @@ export function getDiff(): string {
     let output = '';
 
     try {
-        
         try {
-            //We found everything using this command but the project has to have a first commit
-            output = execSync('git diff HEAD', { encoding: 'utf-8' });
+            // Try to diff against HEAD (requires at least one commit in the repo)
+            // 'ignore' on stderr suppresses the ugly Git error message on fresh repos
+            output = execSync('git diff HEAD', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
         } catch {
-            //If it fails (e.g. newly created repo without first commit), we concatenate the two diffs
-            const staged = execSync('git diff --cached', { encoding: 'utf-8' });
-            const unstaged = execSync('git diff', { encoding: 'utf-8' });
+            // If it fails (e.g., newly created repo without a first commit), we concatenate the two diffs
+            const staged = execSync('git diff --cached', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+            const unstaged = execSync('git diff', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
             output = staged + '\n' + unstaged;
         }
 
     } catch(err: unknown) {
-        //Manage the error
+        // Manage the error
         if (err instanceof Error) {
             throw new Error(`Failed to read Git diff: ${err.message}`);
         }
 
-        //Manage unknown error occured
+        // Manage unknown error occurrence
         throw new Error('Failed to read Git diff: Unknown error occurred');
     }
 
-    //If the output is completely empty it means there are no rows modified inside the base code
+    // If the output is completely empty, it means there are no modified rows
     if (output.trim() === '') {
         throw new Error('No changes detected in the repository.');
     }
 
-    //If everything is allright and the scanner found something we return the output variabile converted with trim()
+    // Return the trimmed output
     return output;
 }
