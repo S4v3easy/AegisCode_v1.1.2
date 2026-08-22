@@ -1,11 +1,10 @@
-import {Command, Flags} from '@oclif/core'
+import {Command, Flags, ux} from '@oclif/core'
 import {getDiff} from '../core/interceptor.js'
 // Import the main brain, using OpenRouter AI
 import {analyzeDiff} from '../core/ai.js'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import chalk from 'chalk'
-import ora from 'ora'
 
 export default class Scan extends Command {
   // Useful for aegis --help
@@ -31,15 +30,15 @@ export default class Scan extends Command {
       // We encapsulate the getDiff function inside diff
       const diff = getDiff()
 
-      // Start the animated spinner
-      const spinner = ora('🧠 Scanning code changes...').start()
+      // Start the animated spinner using oclif native ux to prevent flickering
+      ux.action.start('🧠 Scanning code changes')
       const startTime = Date.now()
 
       // We send the diff string content to the analyzeDiff function
       const aiResult = await analyzeDiff(diff, projectRules)
       
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-      spinner.stop()
+      ux.action.stop()
 
       if (aiResult.verdict === 'APPROVED') {
         this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGIS VERDICT: APPROVED ')} ${chalk.dim(`(${elapsed}s)`)}`)
