@@ -48,7 +48,7 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'HTTP-Referer': 'https://aegiscode.dev', // OpenRouter lo richiede
+                'HTTP-Referer': 'https://aegiscode.dev', // Required by OpenRouter
                 'X-Title': 'AegisCode CLI',
                 'Content-Type': 'application/json',
             },

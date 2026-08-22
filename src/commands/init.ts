@@ -3,26 +3,27 @@ import { scanEnvironment } from '../core/scanner.js';
 import { generateArchitecturalRules } from '../core/ai.js';
 import process from 'node:process';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path'; //To process correctly the path format
-import { select } from '@inquirer/prompts'; //To communicate with the CLI
-// Imports native Node.js moduels for the file system if you need them
+import * as path from 'node:path'; 
+import { select } from '@inquirer/prompts'; 
+import chalk from 'chalk';
+import ora from 'ora';
 
 export default class Init extends Command {
-    //help command description of AegisCode (es: aegis --help)
-    static description = 'Inizialization of AegisCode in the current project...';
+    // Help command description for AegisCode (e.g. aegis --help)
+    static description = 'Initialization of AegisCode in the current project...';
 
-    //Flags creation (--force, --silent)
+    // Flags creation (--force, --silent)
     static flags = {
         force: Flags.boolean({ char: 'f', description: 'Overwrites existing configuration' }),
     };
 
-    //Main async method
+    // Main async method
     public async run(): Promise<void> {
         const { flags } = await this.parse(Init);
 
         const configPath = path.join(process.cwd(), 'aegis.config.json');
 
-        //Security check to do not overwrite the aegis.config.file
+        // Security check to avoid overwriting the aegis.config.json file
         let fileExists = false;
         
         try {
@@ -34,31 +35,31 @@ export default class Init extends Command {
 
         // We check this OUTSIDE the try-catch so this.error isn't swallowed
         if (fileExists && !flags.force) {
-            this.error("The aegis.config.json file already exists. Use aegis init --force to overwrite it.");
+            this.error(chalk.red("The aegis.config.json file already exists. Use aegis init --force to overwrite it."));
         }
 
-        this.log('Initializing AegisCode...');
+        this.log(chalk.cyan.bold('\nInitializing AegisCode...'));
 
         try {
             const currentFolder = process.cwd();
 
-            //We call the scanEnviroment function inside scanner.ts to find all the tech stack of the project
-            this.log('\n🔍 Scanning project environment...');
+            // Animated spinner for mechanical scan
+            const scanSpinner = ora('Scanning project environment...').start();
             const detectedStack = await scanEnvironment(currentFolder);
+            scanSpinner.succeed(chalk.green(`Mechanical scan completed. Detected languages: ${chalk.cyan(detectedStack.languages.join(', ') || 'None')}`));
 
+            this.log(''); // Empty line for spacing
             const severityLevel = await select({
                 message: 'Select the severity level for AegisCode:',
                 choices: [
                     {
                         name: 'Relaxed (Architectural Tips Only)',
-                        value: 'low'
+                        value: 'relaxed' // Fixed from 'low' to match promptBuilder SEVERITY_PROFILES
                     },
-
                     {
                         name: 'Standard (Block obviously incorrect patterns)',
                         value: 'medium'
                     },
-
                     {
                         name: 'Paranoid (Strict Enterprise Rules, Zero Tolerance)',
                         value: 'high'
@@ -66,12 +67,10 @@ export default class Init extends Command {
                 ],
             });
 
-            this.log('Chosen Level:', severityLevel);
+            this.log(`\n${chalk.dim('Chosen Level:')} ${chalk.cyan.bold(severityLevel)}\n`);
 
-            //Path configuration to create the aegis.config.json
-            const configPath = path.join(currentFolder, 'aegis.config.json');
-
-            this.log('\n⚙️ Mechanical scan completed. Invoking AI Architect for rule generation...');
+            // Animated spinner for AI generation
+            const aiSpinner = ora('Invoking AI Architect for smart rule generation...').start();
             
             // Surgical Look: Map the directory structure
             let folderStructure = 'Unknown';
@@ -88,31 +87,29 @@ export default class Init extends Command {
                 } catch {}
             }
 
-            this.log(`👀 Surgical Look: Passed folder structure to AI (${folderStructure})`);
-
             // Invoking Qwen with the data found by the mechanical scanner AND the folder structure
             const generatedRules = await generateArchitecturalRules(detectedStack.languages, detectedStack.coreLibs, folderStructure);
 
             if (generatedRules.length > 0) {
-                this.log('✨ The AI Architect has generated your custom rules!');
+                aiSpinner.succeed(chalk.green('The AI Architect has generated your custom rules!'));
             } else {
-                this.log('⚠️ AI Architect offline or unconfigured. Rules must be inserted manually.');
+                aiSpinner.warn(chalk.yellow('AI Architect offline or unconfigured. Rules must be inserted manually.'));
             }
 
             const configData = {
                 aegisVersion: "0.1.0",
                 severity: severityLevel,
-                languages: detectedStack.languages, // <--- Nuova chiave!
-                stack: detectedStack.coreLibs,      // <--- Object.keys(librerieBase)
+                languages: detectedStack.languages, // <--- New key!
+                stack: detectedStack.coreLibs,      // <--- Extracted base libraries
                 ai_rules: generatedRules 
             };
 
-            await fs.writeFile(configPath, JSON.stringify(configData, null, 2), 'utf-8'); //Correct format of aegis.package.json
+            await fs.writeFile(configPath, JSON.stringify(configData, null, 2), 'utf-8'); // Correct format for aegis.config.json
 
-            this.log('✅ AegisCode Configured! File aegis.config.json generated successfully.');
+            this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGISCODE CONFIGURED! ')} ${chalk.green('File aegis.config.json generated successfully.\n')}`);
 
         } catch (err) {
-            this.error(err instanceof Error ? err.message : String(err));
+            this.error(chalk.red(err instanceof Error ? err.message : String(err)));
         }
     }
 }

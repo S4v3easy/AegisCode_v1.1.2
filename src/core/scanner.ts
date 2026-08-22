@@ -75,7 +75,7 @@ const scanners: TechScanner[] = [
                         inDependencies = true;
                         return false;
                     }
-                    // Se inizia con '[' ma non è dependencies, smettiamo di raccogliere
+                    // If it starts with '[' but is not dependencies, stop collecting
                     if (line.startsWith('[')) {
                         inDependencies = false;
                         return false;
@@ -93,7 +93,7 @@ const scanners: TechScanner[] = [
                 .map(line => line.trim())
                 .filter(line => line.startsWith('gem ') && !line.startsWith('#'))
                 .map(line => {
-                    // Estrae il nome della gemma: gem 'rails', '~> 7.0' -> rails
+                    // Extracts the gem name: gem 'rails', '~> 7.0' -> rails
                     const match = line.match(/gem\s+['"]([^'"]+)['"]/);
                     return match ? match[1] : '';
                 })
@@ -119,7 +119,7 @@ export async function scanEnvironment(dirPath: string): Promise<DetectedStack> {
     let detectedLanguages: string[] = [];
     let detectedLibs: string[] = [];
 
-    // --- MOTORE 1: Rilevamento Superficiale (Estensioni) ---
+    // --- ENGINE 1: Surface Detection (Extensions) ---
     try {
         const files = await fs.readdir(dirPath);
         for (const file of files) {
@@ -129,10 +129,10 @@ export async function scanEnvironment(dirPath: string): Promise<DetectedStack> {
             }
         }
     } catch (err) {
-        // Fallback silenzioso se non riesce a leggere la cartella
+        // Silent fallback if it fails to read the directory
     }
 
-    // --- MOTORE 2: Estrazione Chirurgica (Manifesti) ---
+    // --- ENGINE 2: Surgical Extraction (Manifests) ---
     // The engine loops finitely ONLY over registered scanners
     for (const scanner of scanners) {
         try {

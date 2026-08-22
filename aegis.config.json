@@ -1,6 +1,6 @@
 {
   "aegisVersion": "0.1.0",
-  "severity": "relaxed",
+  "severity": "medium",
   "languages": [
     "JavaScript/TypeScript"
   ],
@@ -9,7 +9,9 @@
     "@oclif/core",
     "@oclif/plugin-help",
     "@oclif/plugin-plugins",
+    "chalk",
     "dotenv",
+    "ora",
     "@eslint/compat",
     "@oclif/prettier-config",
     "@oclif/test",
@@ -27,11 +29,8 @@
     "typescript"
   ],
   "ai_rules": [
-    "Commands must delegate all business logic to core modules; no logic in command files",
-    "All user inputs must be validated/sanitized via @inquirer/prompts validation or core validation utilities",
-    "Environment configuration must use dotenv with strict typing via a centralized config interface",
-    "All TypeScript code must include 100% test coverage using @oclif/test, mocha, and chai with test files colocated in the same directory as implementation files",
-    "Code formatting must conform to Prettier and ESLint rules defined in @oclif/prettier-config and eslint-config-oclif",
-    "ESLint configurations must extend @eslint/compat to ensure compatibility across different ESLint versions"
+    "Commands must only handle input parsing/output rendering; business logic must reside in core modules isolated from CLI dependencies.",
+    "Core services must expose strictly-typed APIs for plugins to consume, with no direct references to @oclif/core or command-specific code.",
+    "All user input validation and CLI output formatting (using chalk/ora) must occur in dedicated utility layers, never in core business logic."
   ]
 }
