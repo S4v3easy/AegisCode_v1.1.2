@@ -1,6 +1,6 @@
 {
   "aegisVersion": "0.1.0",
-  "severity": "medium",
+  "severity": "relaxed",
   "languages": [
     "JavaScript/TypeScript"
   ],

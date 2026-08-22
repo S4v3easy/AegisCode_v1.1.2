@@ -1,25 +1,26 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import process from 'node:process';
-import { Command, Args } from "@oclif/core";
+import { Command } from "@oclif/core";
+import { select } from '@inquirer/prompts';
 
 export default class Hook extends Command {
-    //Decleare positional argument
-    static args = {
-        action: Args.string({
-            description: 'turn on (on) and turn off (off) AegisCode Git Hook',
-            required: true,
-        }),
-    }
+    static description = 'Enable or disable the AegisCode Git Pre-commit Hook';
 
     public async run(): Promise<void> {
-        const { args } = await this.parse(Hook);
-        const userAction = args.action;
-
-        //Check the option inside userAction and its validation
-        if (!['on', 'off'].includes(userAction)) {
-            this.error('Invalid action. Use on or off.');
-        }
+        const userAction = await select({
+            message: 'AegisCode Pre-commit Hook Status:',
+            choices: [
+                {
+                    name: 'Enable (Turn ON) 🟢',
+                    value: 'on'
+                },
+                {
+                    name: 'Disable (Turn OFF) 🔴',
+                    value: 'off'
+                }
+            ]
+        });
 
         //We inizialyze the path of hooks git service
         const hooksDir = path.join(process.cwd(), '.git', 'hooks');
