@@ -1,5 +1,6 @@
 import { Command, Flags } from "@oclif/core";
 import { scanEnvironment } from '../core/scanner.js';
+import { generateArchitecturalRules } from '../core/ai.js';
 import process from 'node:process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path'; //To process correctly the path format
@@ -70,12 +71,40 @@ export default class Init extends Command {
             //Path configuration to create the aegis.config.json
             const configPath = path.join(currentFolder, 'aegis.config.json');
 
+            this.log('\n⚙️ Mechanical scan completed. Invoking AI Architect for rule generation...');
+            
+            // Surgical Look: Map the directory structure
+            let folderStructure = 'Unknown';
+            try {
+                // Try to read the src folder first if it exists (typical in TS/JS projects)
+                const srcPath = path.join(currentFolder, 'src');
+                const dirs = await fs.readdir(srcPath);
+                folderStructure = `/src: ${dirs.join(', ')}`;
+            } catch {
+                try {
+                    // Fallback to the root excluding hidden folders and node_modules
+                    const dirs = await fs.readdir(currentFolder);
+                    folderStructure = `/root: ${dirs.filter(d => !d.startsWith('.') && d !== 'node_modules').join(', ')}`;
+                } catch {}
+            }
+
+            this.log(`👀 Surgical Look: Passed folder structure to AI (${folderStructure})`);
+
+            // Invoking Qwen with the data found by the mechanical scanner AND the folder structure
+            const generatedRules = await generateArchitecturalRules(detectedStack.languages, detectedStack.coreLibs, folderStructure);
+
+            if (generatedRules.length > 0) {
+                this.log('✨ The AI Architect has generated your custom rules!');
+            } else {
+                this.log('⚠️ AI Architect offline or unconfigured. Rules must be inserted manually.');
+            }
+
             const configData = {
                 aegisVersion: "0.1.0",
                 severity: severityLevel,
                 languages: detectedStack.languages, // <--- Nuova chiave!
                 stack: detectedStack.coreLibs,      // <--- Object.keys(librerieBase)
-                ai_rules: [] 
+                ai_rules: generatedRules 
             };
 
             await fs.writeFile(configPath, JSON.stringify(configData, null, 2), 'utf-8'); //Correct format of aegis.package.json

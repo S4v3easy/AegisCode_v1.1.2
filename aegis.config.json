@@ -10,7 +10,6 @@
     "@oclif/plugin-help",
     "@oclif/plugin-plugins",
     "dotenv",
-    "groq-sdk",
     "@eslint/compat",
     "@oclif/prettier-config",
     "@oclif/test",
@@ -27,5 +26,12 @@
     "ts-node",
     "typescript"
   ],
-  "ai_rules": []
+  "ai_rules": [
+    "Commands must delegate all business logic to core modules; no logic in command files",
+    "All user inputs must be validated/sanitized via @inquirer/prompts validation or core validation utilities",
+    "Environment configuration must use dotenv with strict typing via a centralized config interface",
+    "All TypeScript code must include 100% test coverage using @oclif/test, mocha, and chai with test files colocated in the same directory as implementation files",
+    "Code formatting must conform to Prettier and ESLint rules defined in @oclif/prettier-config and eslint-config-oclif",
+    "ESLint configurations must extend @eslint/compat to ensure compatibility across different ESLint versions"
+  ]
 }

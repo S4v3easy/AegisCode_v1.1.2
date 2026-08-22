@@ -6,42 +6,154 @@ export interface DetectedStack {
     coreLibs: string[];
 }
 
+// 1. Define the Scanner interface
+interface TechScanner {
+    fileName: string;
+    language: string;
+    extractLibs: (content: string) => string[];
+}
+
+// 2. The Scanner Registry (Infinitely Scalable)
+const scanners: TechScanner[] = [
+    {
+        fileName: 'package.json',
+        language: 'JavaScript/TypeScript',
+        extractLibs: (content) => {
+            try {
+                const pkg = JSON.parse(content);
+                return [...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {})];
+            } catch {
+                return [];
+            }
+        }
+    },
+    {
+        fileName: 'requirements.txt',
+        language: 'Python',
+        extractLibs: (content) => {
+            // Split by line, ignore comments, split on '==' or '>=' to extract the clean package name
+            return content.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0 && !line.startsWith('#'))
+                .map(line => line.split(/[=<>~]/)[0].trim());
+        }
+    },
+    {
+        fileName: 'go.mod',
+        language: 'Go',
+        extractLibs: (content) => {
+            // A go.mod file contains lines with the library and version.
+            // We only extract lines that do not start with 'module' or 'go' and are not parentheses.
+            return content.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0 && !line.startsWith('module') && !line.startsWith('go ') && line !== 'require (')
+                // Extract the first word of the line (which in go.mod is always the library name)
+                .map(line => line.split(' ')[0].trim());
+        }
+    },
+    {
+        fileName: 'composer.json',
+        language: 'PHP',
+        extractLibs: (content) => {
+            try {
+                const pkg = JSON.parse(content);
+                return [...Object.keys(pkg.require || {}), ...Object.keys(pkg['require-dev'] || {})];
+            } catch {
+                return [];
+            }
+        }
+    },
+    {
+        fileName: 'Cargo.toml',
+        language: 'Rust',
+        extractLibs: (content) => {
+            let inDependencies = false;
+            return content.split('\n')
+                .map(line => line.trim())
+                .filter(line => {
+                    if (line.startsWith('[dependencies]') || line.startsWith('[dev-dependencies]')) {
+                        inDependencies = true;
+                        return false;
+                    }
+                    // Se inizia con '[' ma non è dependencies, smettiamo di raccogliere
+                    if (line.startsWith('[')) {
+                        inDependencies = false;
+                        return false;
+                    }
+                    return inDependencies && line.includes('=') && !line.startsWith('#');
+                })
+                .map(line => line.split('=')[0].trim());
+        }
+    },
+    {
+        fileName: 'Gemfile',
+        language: 'Ruby',
+        extractLibs: (content) => {
+            return content.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.startsWith('gem ') && !line.startsWith('#'))
+                .map(line => {
+                    // Estrae il nome della gemma: gem 'rails', '~> 7.0' -> rails
+                    const match = line.match(/gem\s+['"]([^'"]+)['"]/);
+                    return match ? match[1] : '';
+                })
+                .filter(lib => lib.length > 0);
+        }
+    }
+];
+
+const extensionToLanguage: Record<string, string> = {
+    '.py': 'Python',
+    '.go': 'Go',
+    '.js': 'JavaScript',
+    '.ts': 'TypeScript',
+    '.php': 'PHP',
+    '.java': 'Java',
+    '.rs': 'Rust',
+    '.rb': 'Ruby',
+    '.cs': 'C#'
+};
+
 //Function to find the main stack of the project and then pass it to the init command
 export async function scanEnvironment(dirPath: string): Promise<DetectedStack> {
-    //Empty declaration
     let detectedLanguages: string[] = [];
     let detectedLibs: string[] = [];
 
+    // --- MOTORE 1: Rilevamento Superficiale (Estensioni) ---
     try {
-        const pkgPath = path.join(dirPath, 'package.json');
-
-        //We use an internal try catch to manage the existence of the package JSON
-        try {
-            const packageJsonContent = await fs.readFile(pkgPath, 'utf-8');
-            const pkg = JSON.parse(packageJsonContent);
-
-            detectedLanguages.push("JavaScript/TypeScript");
-
-            //After control the object actually exists we can extract the keys from it
-            if(pkg.dependencies) {
-                //The three dots (...) are used to "spread" the array of keys inside detectedLibs
-                detectedLibs.push(...Object.keys(pkg.dependencies));
+        const files = await fs.readdir(dirPath);
+        for (const file of files) {
+            const ext = path.extname(file);
+            if (extensionToLanguage[ext]) {
+                detectedLanguages.push(extensionToLanguage[ext]);
             }
-
-            if(pkg.devDependencies) {
-                detectedLibs.push(...Object.keys(pkg.devDependencies));
-            }
-
-        } catch(err) {
-            //Here we just pass the error and go on with the next try catch to see if there's another techonolgy/framework
         }
-
-    } catch(err) {
-        throw new Error('Critical error scanning environment.')
+    } catch (err) {
+        // Fallback silenzioso se non riesce a leggere la cartella
     }
 
+    // --- MOTORE 2: Estrazione Chirurgica (Manifesti) ---
+    // The engine loops finitely ONLY over registered scanners
+    for (const scanner of scanners) {
+        try {
+            const filePath = path.join(dirPath, scanner.fileName);
+            // If fs.readFile fails, the file does not exist, jump to catch
+            const content = await fs.readFile(filePath, 'utf-8');
+            
+            // File found! Extract libraries
+            const libs = scanner.extractLibs(content);
+            
+            detectedLanguages.push(scanner.language);
+            detectedLibs.push(...libs);
+        } catch (err) {
+            // The file does not exist, simply move to the next scanner
+            continue; 
+        }
+    }
+
+    // Remove any duplicates
     return {
-        languages: detectedLanguages,
-        coreLibs: detectedLibs
+        languages: [...new Set(detectedLanguages)],
+        coreLibs: [...new Set(detectedLibs)]
     };
 }

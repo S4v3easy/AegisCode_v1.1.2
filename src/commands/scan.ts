@@ -1,6 +1,6 @@
 import {Command, Flags} from '@oclif/core'
 import {getDiff} from '../core/interceptor.js'
-//We import the main brain, using groq AI
+//We import the main brain, using OpenRouter AI
 import {analyzeDiff} from '../core/ai.js'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
@@ -30,7 +30,7 @@ export default class Scan extends Command {
       //We incapsulate the getDiff function inside diff
       const diff = getDiff()
 
-      this.log('\n🧠 Connecting to Groq servers... AI is analyzing your code.')
+      this.log('\n🧠 Connecting to OpenRouter servers... AI is analyzing your code.')
 
       //We send the diff string content to the analyzeDiff function to get the AI analyze it
       const aiResult = await analyzeDiff(diff, projectRules)
@@ -40,7 +40,7 @@ export default class Scan extends Command {
       this.log(aiResult.chainOfThought)
       this.log('---------------------------\n')
 
-      //Print the AI response from groq server
+      //Print the AI response from OpenRouter server
       this.log('\n----- OFFICIAL VERDICT -----')
       this.log(`VERDICT: ${aiResult.verdict}`)
 
