@@ -68,43 +68,64 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
     const customRules = parsedConfig.ai_rules || [];
     const systemPrompt = buildSystemPrompt(severity, stack, customRules);
 
-    if (auth.type === 'byok') {
-        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${auth.key}`,
-                'HTTP-Referer': 'https://aegiscode.dev',
-                'X-Title': 'AegisCode CLI',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: "deepseek/deepseek-r1",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: `Analyze this git diff:\n\n${diff}` }
-                ],
-                temperature: 0.1,
-            })
-        });
-    } else {
-        const proxyUrl = process.env.AEGIS_PROXY_URL || 'https://www.aegiscode.app/api/scan';
-        // Proxy flow
-        response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${auth.token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                diff: diff,
-                systemPrompt: systemPrompt
-            })
-        });
-    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds timeout
 
-    if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || errData.error || `API Error: ${response.statusText}`);
+    try {
+        if (auth.type === 'byok') {
+            response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${auth.key}`,
+                    'HTTP-Referer': 'https://aegiscode.dev',
+                    'X-Title': 'AegisCode CLI',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: "deepseek/deepseek-r1",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: `Analyze this git diff:\n\n${diff}` }
+                    ],
+                    temperature: 0.1,
+                }),
+                signal: controller.signal
+            });
+        } else {
+            const proxyUrl = process.env.AEGIS_PROXY_URL || 'https://www.aegiscode.app/api/scan';
+            // Proxy flow
+            response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${auth.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    diff: diff,
+                    systemPrompt: systemPrompt
+                }),
+                signal: controller.signal
+            });
+        }
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || errData.error || `API Error: ${response.statusText}`);
+        }
+    } catch (e: any) {
+        clearTimeout(timeoutId);
+        // Fail-Open implementation for network issues or timeouts
+        if (e.name === 'AbortError' || e.message?.toLowerCase().includes('fetch') || e.code === 'ENOTFOUND' || e.code === 'ECONNREFUSED') {
+            console.warn('\n⚠️  \x1b[33m[AEGIS WARNING]: Network timeout or unreachable. Fail-Open active. Allowing commit.\x1b[0m\n');
+            return { 
+                verdict: 'APPROVED', 
+                violations: [], 
+                chainOfThought: 'Network timeout. Fail-open enabled to prevent blocking the developer workflow.' 
+            };
+        }
+        throw e;
     }
 
     const data = await response.json();
@@ -205,11 +226,18 @@ You MUST output ONLY a valid JSON array of strings. No markdown formatting, no e
 
         const jsonMatch = content.match(/\[\s*([\s\S]*?)\s*\]/i);
         if (jsonMatch) {
-            const pureArray = `[${jsonMatch[1]}]`;
-            const parsedRules = JSON.parse(pureArray);
-            if (Array.isArray(parsedRules)) return parsedRules;
+            let pureArray = `[${jsonMatch[1]}]`;
+            // Sanitize unescaped newlines and tabs that often break JSON.parse
+            pureArray = pureArray.replace(/\n/g, ' ').replace(/\r/g, '').replace(/\t/g, ' ');
+            try {
+                const parsedRules = JSON.parse(pureArray);
+                if (Array.isArray(parsedRules)) return parsedRules;
+            } catch (parseErr) {
+                console.warn('\n⚠️ AI returned malformed JSON. Using fallback baseline rules.');
+                return ["BASELINE_SECURITY: No exposed secrets or credentials.", "CROSS_PLATFORM_SAFETY: Avoid OS-specific bindings unless required by stack."];
+            }
         }
-        return [];
+        return ["BASELINE_SECURITY: Ensure code isolation and avoid anti-patterns."];
     } catch(err: any) {
         throw new Error(err.message || 'Failed to generate rules');
     }
