@@ -99,6 +99,35 @@ const scanners: TechScanner[] = [
                 })
                 .filter(lib => lib.length > 0);
         }
+    },
+    {
+        fileName: 'Makefile',
+        language: 'C/C++',
+        extractLibs: (content) => {
+            const libs: string[] = [];
+            // Basic regex to find linked libraries e.g., -lssl, -lcrypto
+            const regex = /-l([a-zA-Z0-9_-]+)/g;
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                libs.push(match[1]);
+            }
+            return libs;
+        }
+    },
+    {
+        fileName: 'CMakeLists.txt',
+        language: 'C/C++',
+        extractLibs: (content) => {
+            const libs: string[] = [];
+            // Extract from target_link_libraries(...)
+            const regex = /target_link_libraries\s*\(\s*[^\s]+\s+([^)]+)\)/g;
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                const innerLibs = match[1].split(/\s+/).filter(l => l && !l.includes('PRIVATE') && !l.includes('PUBLIC'));
+                libs.push(...innerLibs);
+            }
+            return libs;
+        }
     }
 ];
 
@@ -111,7 +140,11 @@ const extensionToLanguage: Record<string, string> = {
     '.java': 'Java',
     '.rs': 'Rust',
     '.rb': 'Ruby',
-    '.cs': 'C#'
+    '.cs': 'C#',
+    '.c': 'C',
+    '.cpp': 'C++',
+    '.h': 'C/C++',
+    '.hpp': 'C++'
 };
 
 //Function to find the main stack of the project and then pass it to the init command
