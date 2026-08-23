@@ -4,6 +4,7 @@ import {getDiff} from '../core/interceptor.js'
 import {analyzeDiff} from '../core/ai.js'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
+import * as crypto from 'node:crypto'
 import chalk from 'chalk'
 
 export default class Scan extends Command {
@@ -29,6 +30,25 @@ export default class Scan extends Command {
     try {
       // We encapsulate the getDiff function inside diff
       const diff = getDiff()
+
+      // --- DIFF CACHING (Zero Time, Zero Tokens) ---
+      const aegisDir = path.join(process.cwd(), '.aegis')
+      const cachePath = path.join(aegisDir, 'cache.json')
+      
+      // Calculate SHA-256 of the current diff
+      const diffHash = crypto.createHash('sha256').update(diff).digest('hex')
+      
+      try {
+          const cacheData = JSON.parse(await fs.readFile(cachePath, 'utf-8'))
+          if (cacheData.lastApprovedHash === diffHash) {
+              const elapsed = "0.00";
+              this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGIS VERDICT: CACHE HIT ')} ${chalk.dim(`(${elapsed}s)`)}`)
+              this.log(chalk.green('No architectural changes since last scan. You are good to go! 🚀\n'))
+              process.exit(0)
+          }
+      } catch (err) {
+          // Cache doesn't exist or is invalid, proceed with scan
+      }
 
       // --- DETERMINISTIC PRE-CHECKS (Zero AI Tokens) ---
       const deterministicRules = [
@@ -108,6 +128,14 @@ export default class Scan extends Command {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
 
       if (aiResult.verdict === 'APPROVED') {
+        // Save the hash to cache since it was approved
+        try {
+            await fs.mkdir(aegisDir, { recursive: true })
+            await fs.writeFile(cachePath, JSON.stringify({ lastApprovedHash: diffHash }))
+        } catch (err) {
+            // Silently fail if we can't write to cache, it's non-critical
+        }
+
         this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGIS VERDICT: APPROVED ')} ${chalk.dim(`(${elapsed}s)`)}`)
         this.log(chalk.green('No architectural violations found. You are good to go! 🚀\n'))
       } else {
