@@ -32,7 +32,7 @@ function getAuthDetails() {
         try {
             const tokens = JSON.parse(fs.readFileSync(tokenPath, 'utf-8'));
             if (tokens.accessToken) {
-                return { type: 'jwt', token: tokens.accessToken };
+                return { type: 'jwt', token: tokens.accessToken, refreshToken: tokens.refreshToken };
             }
         } catch(e) {}
     }
@@ -43,6 +43,41 @@ function getAuthDetails() {
     }
 
     return null;
+}
+
+async function aegisFetch(url: string, options: any, auth: any): Promise<Response> {
+    let response = await fetch(url, options);
+
+    if (response.status === 401 && auth.type === 'jwt' && auth.refreshToken) {
+        const refreshUrl = process.env.AEGIS_REFRESH_URL || 'https://www.aegiscode.app/api/refresh';
+        try {
+            const refreshRes = await fetch(refreshUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: auth.refreshToken })
+            });
+
+            if (refreshRes.ok) {
+                const newTokens = await refreshRes.json();
+                
+                const aegisDir = path.join(os.homedir(), '.aegiscode');
+                const tokenPath = path.join(aegisDir, 'token.json');
+                fs.writeFileSync(tokenPath, JSON.stringify({ 
+                    accessToken: newTokens.access_token, 
+                    refreshToken: newTokens.refresh_token 
+                }, null, 2));
+
+                auth.token = newTokens.access_token;
+                auth.refreshToken = newTokens.refresh_token;
+                options.headers['Authorization'] = `Bearer ${auth.token}`;
+
+                response = await fetch(url, options);
+            }
+        } catch (e) {
+            // Silently fall back to returning the original 401 response
+        }
+    }
+    return response;
 }
 
 export async function analyzeDiff(diff: string, projectRules: string): Promise<AegisAnalysisReport> {
@@ -94,7 +129,7 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
         } else {
             const proxyUrl = process.env.AEGIS_PROXY_URL || 'https://www.aegiscode.app/api/scan';
             // Proxy flow
-            response = await fetch(proxyUrl, {
+            response = await aegisFetch(proxyUrl, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${auth.token}`,
@@ -105,7 +140,7 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
                     systemPrompt: systemPrompt
                 }),
                 signal: controller.signal
-            });
+            }, auth);
         }
 
         clearTimeout(timeoutId);
@@ -201,14 +236,14 @@ You MUST output ONLY a valid JSON array of strings. No markdown formatting, no e
                 })
             });
         } else {
-            response = await fetch(process.env.AEGIS_INIT_URL || 'https://www.aegiscode.app/api/init', {
+            response = await aegisFetch(process.env.AEGIS_INIT_URL || 'https://www.aegiscode.app/api/init', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${auth.token}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ languages, stack, folderStructure })
-            });
+            }, auth);
         }
 
         if (!response.ok) {
@@ -287,14 +322,14 @@ You MUST output ONLY a valid JSON array of strings containing the final merged r
                 })
             });
         } else {
-            response = await fetch(process.env.AEGIS_UPDATE_URL || 'https://www.aegiscode.app/api/update', {
+            response = await aegisFetch(process.env.AEGIS_UPDATE_URL || 'https://www.aegiscode.app/api/update', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${auth.token}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ oldRules, languages, stack, folderStructure })
-            });
+            }, auth);
         }
 
         if (!response.ok) {
