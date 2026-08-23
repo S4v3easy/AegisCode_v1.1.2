@@ -1,7 +1,7 @@
 {
   "name": "@save3asy/aegiscode",
   "description": "AI Code Governance & Architecture Guardrails",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Saverio Tifi",
   "bin": {
     "aegis": "bin/run.js"
