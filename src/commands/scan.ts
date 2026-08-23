@@ -34,6 +34,7 @@ export default class Scan extends Command {
       // --- DIFF CACHING (Zero Time, Zero Tokens) ---
       const aegisDir = path.join(process.cwd(), '.aegis')
       const cachePath = path.join(aegisDir, 'cache.json')
+      const scanPassedPath = path.join(aegisDir, '.scan_passed')
       
       // Calculate SHA-256 of the current diff
       const diffHash = crypto.createHash('sha256').update(diff).digest('hex')
@@ -44,6 +45,7 @@ export default class Scan extends Command {
               const elapsed = "0.00";
               this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGIS VERDICT: CACHE HIT ')} ${chalk.dim(`(${elapsed}s)`)}`)
               this.log(chalk.green('No architectural changes since last scan. You are good to go! 🚀\n'))
+              await fs.writeFile(scanPassedPath, 'true')
               process.exit(0)
           }
       } catch (err) {
@@ -132,6 +134,7 @@ export default class Scan extends Command {
         try {
             await fs.mkdir(aegisDir, { recursive: true })
             await fs.writeFile(cachePath, JSON.stringify({ lastApprovedHash: diffHash }))
+            await fs.writeFile(scanPassedPath, 'true')
         } catch (err) {
             // Silently fail if we can't write to cache, it's non-critical
         }
