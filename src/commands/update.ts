@@ -1,11 +1,10 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import process from 'node:process';
-import { Command } from "@oclif/core";
+import { Command, ux } from "@oclif/core";
 import { scanEnvironment } from '../core/scanner.js'; // Function to update the project environment
 import { upgradeArchitecturalRules } from '../core/ai.js';
 import chalk from 'chalk';
-import ora from 'ora';
 
 export default class Update extends Command {
     // Description
@@ -25,9 +24,10 @@ export default class Update extends Command {
             this.log(`\n📂 ${chalk.blue('Found existing config with')} ${chalk.cyan.bold(oldRules.length)} ${chalk.blue('rules.')}\n`);
 
             // Start the new scan for the updated environment
-            const scanSpinner = ora('Scanning project environment for new dependencies...').start();
+            ux.action.start('Scanning project environment for new dependencies');
             const detectedStack = await scanEnvironment(currentFolder);
-            scanSpinner.succeed(chalk.green(`Mechanical scan completed. Detected languages: ${chalk.cyan(detectedStack.languages.join(', ') || 'None')}\n`));
+            ux.action.stop(chalk.green('completed'));
+            this.log(chalk.green(`Mechanical scan completed. Detected languages: ${chalk.cyan(detectedStack.languages.join(', ') || 'None')}\n`));
             
             // Surgical Look: Map the directory structure
             let folderStructure = 'Unknown';
@@ -42,10 +42,11 @@ export default class Update extends Command {
                 } catch {}
             }
             
-            const aiSpinner = ora('Invoking AI Architect for smart rule merge...').start();
+            ux.action.start('Invoking AI Architect for smart rule merge');
 
             const mergedRules = await upgradeArchitecturalRules(oldRules, detectedStack.languages, detectedStack.coreLibs, folderStructure);
-            aiSpinner.succeed(chalk.green('Smart merge completed.'));
+            ux.action.stop(chalk.green('completed'));
+            this.log(chalk.green('Smart merge completed.'));
 
             // Build the new JSON file keeping version and severity intact
             const newConfig = {

@@ -30,15 +30,61 @@ export default class Scan extends Command {
       // We encapsulate the getDiff function inside diff
       const diff = getDiff()
 
-      // Start the animated spinner using oclif native ux to prevent flickering
-      ux.action.start('🧠 Scanning code changes')
-      const startTime = Date.now()
+      const phrases = [
+        { icon: '🧠', text: 'Scanning code changes...' },
+        { icon: '🛡️ ', text: 'Validating architectural rules...' },
+        { icon: '🔬', text: 'Deep diving into logic...' },
+        { icon: '⚡', text: 'Assessing vulnerability patterns...' }
+      ]
+      const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+      let frame = 0
+      let phraseIndex = 0
 
-      // We send the diff string content to the analyzeDiff function
-      const aiResult = await analyzeDiff(diff, projectRules)
+      // Hide cursor
+      process.stdout.write('\x1B[?25l')
+
+      const spinnerInterval = setInterval(() => {
+        const current = phrases[phraseIndex]
+        const spinFrame = spinnerFrames[frame % spinnerFrames.length]
+        let output = `\r ${current.icon} ${chalk.cyanBright(spinFrame)}  `
+        
+        const lightPos = (frame % (current.text.length + 10)) - 5;
+        
+        for (let i = 0; i < current.text.length; i++) {
+            const char = current.text[i]
+            const dist = Math.abs(i - lightPos)
+            if (dist === 0) {
+                output += chalk.cyanBright.bold(char)
+            } else if (dist === 1) {
+                output += chalk.cyan(char)
+            } else if (dist === 2) {
+                output += chalk.blueBright(char)
+            } else {
+                output += chalk.gray.dim(char)
+            }
+        }
+        
+        output += ' '.repeat(20) // padding to clear previous longer strings
+        process.stdout.write(output)
+        
+        frame++
+        if (frame % 50 === 0) { // Change text every 3.5 seconds
+            phraseIndex = (phraseIndex + 1) % phrases.length
+            frame = 0 
+        }
+      }, 70)
+
+      const startTime = Date.now()
+      let aiResult;
+      try {
+          aiResult = await analyzeDiff(diff, projectRules)
+      } finally {
+          clearInterval(spinnerInterval)
+          // Show cursor and clear line
+          process.stdout.write('\x1B[?25h\r' + ' '.repeat(80) + '\r')
+      }
       
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-      ux.action.stop()
 
       if (aiResult.verdict === 'APPROVED') {
         this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGIS VERDICT: APPROVED ')} ${chalk.dim(`(${elapsed}s)`)}`)

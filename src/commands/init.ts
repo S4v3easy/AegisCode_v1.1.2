@@ -1,4 +1,4 @@
-import { Command, Flags } from "@oclif/core";
+import { Command, Flags, ux } from "@oclif/core";
 import { scanEnvironment } from '../core/scanner.js';
 import { generateArchitecturalRules } from '../core/ai.js';
 import process from 'node:process';
@@ -6,7 +6,6 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path'; 
 import { select } from '@inquirer/prompts'; 
 import chalk from 'chalk';
-import ora from 'ora';
 
 export default class Init extends Command {
     // Help command description for AegisCode (e.g. aegis --help)
@@ -44,9 +43,10 @@ export default class Init extends Command {
             const currentFolder = process.cwd();
 
             // Animated spinner for mechanical scan
-            const scanSpinner = ora('Scanning project environment...').start();
+            ux.action.start('Scanning project environment');
             const detectedStack = await scanEnvironment(currentFolder);
-            scanSpinner.succeed(chalk.green(`Mechanical scan completed. Detected languages: ${chalk.cyan(detectedStack.languages.join(', ') || 'None')}`));
+            ux.action.stop(chalk.green('completed'));
+            this.log(chalk.green(`Mechanical scan completed. Detected languages: ${chalk.cyan(detectedStack.languages.join(', ') || 'None')}`));
 
             this.log(''); // Empty line for spacing
             const severityLevel = await select({
@@ -70,7 +70,7 @@ export default class Init extends Command {
             this.log(`\n${chalk.dim('Chosen Level:')} ${chalk.cyan.bold(severityLevel)}\n`);
 
             // Animated spinner for AI generation
-            const aiSpinner = ora('Invoking AI Architect for smart rule generation...').start();
+            ux.action.start('Invoking AI Architect for smart rule generation');
             
             // Surgical Look: Map the directory structure
             let folderStructure = 'Unknown';
@@ -91,9 +91,11 @@ export default class Init extends Command {
             const generatedRules = await generateArchitecturalRules(detectedStack.languages, detectedStack.coreLibs, folderStructure);
 
             if (generatedRules.length > 0) {
-                aiSpinner.succeed(chalk.green('The AI Architect has generated your custom rules!'));
+                ux.action.stop(chalk.green('completed'));
+                this.log(chalk.green('The AI Architect has generated your custom rules!'));
             } else {
-                aiSpinner.warn(chalk.yellow('AI Architect offline or unconfigured. Rules must be inserted manually.'));
+                ux.action.stop(chalk.yellow('failed'));
+                this.warn(chalk.yellow('AI Architect offline or unconfigured. Rules must be inserted manually.'));
             }
 
             const configData = {

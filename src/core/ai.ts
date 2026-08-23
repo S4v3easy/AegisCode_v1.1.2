@@ -87,8 +87,9 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
             })
         });
     } else {
+        const proxyUrl = process.env.AEGIS_PROXY_URL || 'https://www.aegiscode.app/api/scan';
         // Proxy flow
-        response = await fetch(process.env.AEGIS_PROXY_URL || 'http://localhost:3000/api/scan', {
+        response = await fetch(proxyUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${auth.token}`,
@@ -103,7 +104,7 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
 
     if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(`API Error: ${errData.error || errData.message || response.statusText}`);
+        throw new Error(errData.message || errData.error || `API Error: ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -179,7 +180,7 @@ You MUST output ONLY a valid JSON array of strings. No markdown formatting, no e
                 })
             });
         } else {
-            response = await fetch(process.env.AEGIS_PROXY_URL_INIT || 'http://localhost:3000/api/init', {
+            response = await fetch(process.env.AEGIS_INIT_URL || 'https://www.aegiscode.app/api/init', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${auth.token}`,
@@ -189,7 +190,10 @@ You MUST output ONLY a valid JSON array of strings. No markdown formatting, no e
             });
         }
 
-        if (!response.ok) return [];
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || errData.error || `API Error: ${response.statusText}`);
+        }
 
         const data = await response.json();
         let content = data.choices ? data.choices[0]?.message?.content : (data.content || '[]');
@@ -206,8 +210,8 @@ You MUST output ONLY a valid JSON array of strings. No markdown formatting, no e
             if (Array.isArray(parsedRules)) return parsedRules;
         }
         return [];
-    } catch(err) {
-        return [];
+    } catch(err: any) {
+        throw new Error(err.message || 'Failed to generate rules');
     }
 }
 
@@ -255,7 +259,7 @@ You MUST output ONLY a valid JSON array of strings containing the final merged r
                 })
             });
         } else {
-            response = await fetch(process.env.AEGIS_PROXY_URL_UPDATE || 'http://localhost:3000/api/update', {
+            response = await fetch(process.env.AEGIS_UPDATE_URL || 'https://www.aegiscode.app/api/update', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${auth.token}`,
@@ -265,7 +269,10 @@ You MUST output ONLY a valid JSON array of strings containing the final merged r
             });
         }
 
-        if (!response.ok) return oldRules;
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || errData.error || `API Error: ${response.statusText}`);
+        }
 
         const data = await response.json();
         let content = data.choices ? data.choices[0]?.message?.content : (data.content || '[]');
@@ -281,7 +288,7 @@ You MUST output ONLY a valid JSON array of strings containing the final merged r
             if (Array.isArray(parsedRules)) return parsedRules;
         }
         return oldRules;
-    } catch(err) {
-        return oldRules;
+    } catch(err: any) {
+        throw new Error(err.message || 'Failed to update rules');
     }
 }
