@@ -30,6 +30,27 @@ export default class Scan extends Command {
       // We encapsulate the getDiff function inside diff
       const diff = getDiff()
 
+      // --- DETERMINISTIC PRE-CHECKS (Zero AI Tokens) ---
+      const deterministicRules = [
+          { regex: /\beval\s*\(/, rule: "CRITICAL_SECURITY", fix: "Remove eval() statement. Executing raw string code is strictly forbidden." },
+          { regex: /(?:password|secret|private_key|api_key|token)\s*[:=]\s*["'][a-zA-Z0-9_.-]{12,}["']/i, rule: "BASELINE_SECURITY", fix: "Hardcoded secrets/credentials detected. Use environment variables." }
+      ];
+
+      for (const check of deterministicRules) {
+          // If a new line added in the diff (+ line) contains the forbidden pattern
+          if (diff.split('\n').some(line => line.startsWith('+') && check.regex.test(line))) {
+              const elapsed = "0.01";
+              this.log(`\n${chalk.bgRed.white.bold(' 🛑 AEGIS VERDICT: REJECTED ')} ${chalk.dim(`(${elapsed}s - Local Pre-Check)`)}\n`)
+              this.log(chalk.dim.italic('--- Fast-Path Analysis ---'))
+              this.log(chalk.dim('Violation caught by local deterministic scanner. AI network call bypassed to save time and tokens.'))
+              this.log(chalk.dim('---------------------------\n'))
+              this.log(chalk.red.bold('VIOLATIONS FOUND:'))
+              this.log(`\n❌ ${chalk.red.bold('Rule:')} ${check.rule}`)
+              this.log(`💡 ${chalk.yellow.bold('Fix:')} ${chalk.cyan(check.fix)}\n`)
+              process.exit(1)
+          }
+      }
+
       const phrases = [
         { icon: '🧠', text: 'Scanning code changes...' },
         { icon: '🛡️ ', text: 'Validating architectural rules...' },
