@@ -39,17 +39,17 @@ export default class Rule extends Command {
             }
 
             // Ensure rules array exists
-            if (!Array.isArray(config.rules)) {
-                config.rules = [];
+            if (!Array.isArray(config.ai_rules)) {
+                config.ai_rules = [];
             }
 
             // Add the new rule
-            config.rules.push(ruleToAdd);
+            config.ai_rules.push(ruleToAdd);
 
             // Write it back
             await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
 
-            this.log(`\n${chalk.bgGreen.white.bold(' ✅ RULE ADDED ')} ${chalk.green(`Successfully added rule #${config.rules.length} to aegis.config.json:`)}`);
+            this.log(`\n${chalk.bgGreen.white.bold(' ✅ RULE ADDED ')} ${chalk.green(`Successfully added rule #${config.ai_rules.length} to aegis.config.json:`)}`);
             this.log(chalk.cyan(`"${ruleToAdd}"\n`));
         } catch (err) {
             this.error(chalk.red(`Failed to add rule: ${err instanceof Error ? err.message : String(err)}`));
