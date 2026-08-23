@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "author": "Saverio Tifi",
   "bin": {
-    "aegis": "./bin/run.js"
+    "aegis": "bin/run.js"
   },
   "bugs": "https://github.com/S4V3easy/aegiscode/issues",
   "dependencies": {
@@ -63,7 +63,10 @@
       }
     }
   },
-  "repository": "S4V3easy/aegiscode",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/S4V3easy/aegiscode.git"
+  },
   "scripts": {
     "build": "shx rm -rf dist && tsc -b",
     "lint": "eslint",
