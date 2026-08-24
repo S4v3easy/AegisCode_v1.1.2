@@ -93,9 +93,16 @@ If there are no violations, leave the violations array empty.
 </JSON_RULES>
 
 <UNIVERSAL_LAWS>
-1. THE "ANTI-SLOP" DOCTRINE: Any modification must have a clear, deliberate structural purpose. You MUST REJECT chaotic rewrites, massive unexplained deletions of core logic, or the introduction of hallucinated/non-existent dependencies. Code must evolve, not mutate randomly.
-2. ZERO-TRUST SECURITY: Never trust external data. You MUST REJECT any code that exposes secrets in plaintext, executes unvalidated/unsanitized inputs (preventing ANY form of injection), or bypasses established authentication/authorization boundaries.
-3. CRITICAL DIFF RULE: You are analyzing a PARTIAL git diff, not the whole file. ASSUME that any functions, variables, or imports used (but not declared) in the diff are correctly defined elsewhere in the project. Do NOT reject code just because a dependency appears "undefined" in the snippet.
+    1. CRITICAL SECURITY: No hardcoded secrets in cleartext. No arbitrary code execution (e.g., eval). No obvious injection
+  vulnerabilities (SQL Injection, OS Command Injection).
+    2. PLATFORM PORTABILITY: Do not introduce strictly OS-specific dependencies (e.g., macOS 'fsevents', Windows registries) in
+  cross-platform or web projects. Do not use hardcoded absolute local paths.
+    3. ANTI-SLOP DOCTRINE: Any modification must have a deliberate structural purpose. No obfuscated payloads, hidden data
+  exfiltration, or unjustified chaotic deletion of core business logic.
+    4. ALGORITHMIC CATASTROPHES: No obvious infinite loops, massive memory leaks, or blocking synchronous I/O inside
+  asynchronous environments.
+    5. CRITICAL DIFF RULE: You are analyzing a PARTIAL git diff. ASSUME that any functions or imports used (but not declared) in
+  the diff are correctly defined elsewhere. Do NOT reject code just because a dependency appears "undefined" in the snippet.
 </UNIVERSAL_LAWS>
 
 <PROJECT_CONTEXT>
@@ -111,7 +118,7 @@ Default Action: ${profile.defaultAction}
 WHAT YOU MUST IGNORE (DO NOT REJECT FOR THESE):
 ${profile.ignoreList.map(item => `- ${item}`).join('\n')}
 
-WHAT YOU MUST REJECT (THE ONLY RED FLAGS):
+WHAT YOU MUST REJECT (IN ADDITION TO UNIVERSAL LAWS):
 ${profile.rejectList.map(item => `- ${item}`).join('\n')}
 </SEVERITY_PROFILE>
 `;
@@ -124,7 +131,7 @@ ${profile.rejectList.map(item => `- ${item}`).join('\n')}
         prompt += `</CUSTOM_TEAM_RULES>\n`;
     }
 
-    prompt += `\nCRITICAL: If a <SEVERITY_PROFILE> instruction seems to contradict a general rule, the <SEVERITY_PROFILE> takes absolute precedence for this execution.\n`;
+    prompt += `\nCRITICAL OVERRIDE: The <UNIVERSAL_LAWS> are non-negotiable. If a <SEVERITY_PROFILE> or <CUSTOM_TEAM_RULES> contradicts the <UNIVERSAL_LAWS>, the <UNIVERSAL_LAWS> take absolute precedence and the code MUST be rejected.\n`;
 
     return prompt;
 }

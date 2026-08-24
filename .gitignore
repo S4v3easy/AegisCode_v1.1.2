@@ -4,6 +4,7 @@
 /.idea
 /dist
 /tmp
+/bin-build
 /node_modules
 oclif.manifest.json
 tsconfig.tsbuildinfo

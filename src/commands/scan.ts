@@ -130,13 +130,17 @@ export default class Scan extends Command {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
 
       if (aiResult.verdict === 'APPROVED') {
-        // Save the hash to cache since it was approved
-        try {
-            await fs.mkdir(aegisDir, { recursive: true })
-            await fs.writeFile(cachePath, JSON.stringify({ lastApprovedHash: diffHash }))
-            await fs.writeFile(scanPassedPath, 'true')
-        } catch (err) {
-            // Silently fail if we can't write to cache, it's non-critical
+        const isFailOpen = aiResult.chainOfThought?.includes('Fail-open');
+        
+        if (!isFailOpen) {
+            // Save the hash to cache since it was approved by the AI
+            try {
+                await fs.mkdir(aegisDir, { recursive: true })
+                await fs.writeFile(cachePath, JSON.stringify({ lastApprovedHash: diffHash }))
+                await fs.writeFile(scanPassedPath, 'true')
+            } catch (err) {
+                // Silently fail if we can't write to cache, it's non-critical
+            }
         }
 
         this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGIS VERDICT: APPROVED ')} ${chalk.dim(`(${elapsed}s)`)}`)

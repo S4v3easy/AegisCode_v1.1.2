@@ -33,7 +33,13 @@ export default class Hook extends Command {
         // The bash script
         const bashScript = `#!/bin/sh
     echo "🛡️ AegisCode is analyzing your commit..."
-    npx aegis scan
+    
+    # Try global binary first, fallback to npx
+    if command -v aegis >/dev/null 2>&1; then
+      aegis scan
+    else
+      npx aegis scan
+    fi
     
     if [ $? -ne 0 ]; then
       echo "❌ Commit REJECTED by AegisCode. Fix the violations and try again."

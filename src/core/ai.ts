@@ -104,7 +104,7 @@ export async function analyzeDiff(diff: string, projectRules: string): Promise<A
     const systemPrompt = buildSystemPrompt(severity, stack, customRules);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
 
     try {
         if (auth.type === 'byok') {
