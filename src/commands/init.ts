@@ -28,7 +28,7 @@ export default class Init extends Command {
         try {
             await fs.access(configPath);
             fileExists = true;
-        } catch(err) {
+        } catch {
             // File doesn't exist, which is fine
         }
 
@@ -115,4 +115,3 @@ export default class Init extends Command {
         }
     }
 }
-

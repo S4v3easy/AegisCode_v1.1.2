@@ -21,7 +21,7 @@ export default class Update extends Command {
 
             // Save the old rules
             const oldRules = oldConfig.ai_rules || [];
-            this.log(`\n📂 ${chalk.blue('Found existing config with')} ${chalk.cyan.bold(oldRules.length)} ${chalk.blue('rules.')}\n`);
+            this.log(`\n📂 ${chalk.blue('Found existing config with')} ${chalk.cyan.bold(String(oldRules.length))} ${chalk.blue('rules.')}\n`);
 
             // Start the new scan for the updated environment
             ux.action.start('Scanning project environment for new dependencies');
@@ -61,8 +61,8 @@ export default class Update extends Command {
 
             this.log(`\n${chalk.bgGreen.white.bold(' ✅ AEGISCODE UPDATED SUCCESSFULLY! ')} ${chalk.green('Existing rules preserved and new ones merged.\n')}`);
 
-        } catch(err: any) {
-            if (err.code === 'ENOENT') {
+        } catch(err: unknown) {
+            if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'ENOENT') {
                 this.error(chalk.red("The aegis.config.json file does not exist. You must run 'aegis init' first."));
             } else {
                 this.error(chalk.red(err instanceof Error ? err.message : String(err)));

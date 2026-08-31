@@ -1,6 +1,8 @@
 import { execSync } from 'node:child_process';
+import { DiffResult } from './types.js';
+import { DEFAULTS } from './config.js';
 
-export function getDiff(): string {
+export function getDiff(): DiffResult {
     let output = '';
 
     try {
@@ -30,6 +32,24 @@ export function getDiff(): string {
         throw new Error('No changes detected in the repository.');
     }
 
-    // Return the trimmed output
-    return output;
+    const lines = output.split('\n');
+    const bytes = Buffer.byteLength(output, 'utf-8');
+    const files = (output.match(/^diff --git/gm) || []).length;
+
+    let truncated = false;
+    let content = output;
+
+    if (lines.length > DEFAULTS.MAX_DIFF_LINES) {
+        content = lines.slice(0, DEFAULTS.MAX_DIFF_LINES).join('\n');
+        truncated = true;
+    } else if (bytes > DEFAULTS.MAX_DIFF_SIZE_KB * 1024) {
+        content = output.substring(0, DEFAULTS.MAX_DIFF_SIZE_KB * 1024);
+        truncated = true;
+    }
+
+    return {
+        content: content.trim(),
+        truncated,
+        stats: { files, lines: lines.length, bytes },
+    };
 }

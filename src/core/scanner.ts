@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { DEFAULTS } from './config.js';
 
 export interface DetectedStack {
     languages: string[];
@@ -147,22 +148,54 @@ const extensionToLanguage: Record<string, string> = {
     '.hpp': 'C++'
 };
 
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'target', '__pycache__', 'vendor', '.venv', 'venv', 'coverage', '.cache']);
+
+function shouldSkipDirectory(name: string): boolean {
+    return name.startsWith('.') || SKIP_DIRS.has(name);
+}
+
+async function walkDirectory(dirPath: string, maxDepth: number, maxFiles: number): Promise<string[]> {
+    const results: string[] = [];
+    
+    async function walk(currentPath: string, depth: number): Promise<void> {
+        if (depth > maxDepth || results.length >= maxFiles) return;
+        
+        try {
+            const entries = await fs.readdir(currentPath, { withFileTypes: true });
+            for (const entry of entries) {
+                if (results.length >= maxFiles) break;
+                
+                if (entry.isFile()) {
+                    results.push(path.join(currentPath, entry.name));
+                } else if (entry.isDirectory() && !shouldSkipDirectory(entry.name)) {
+                    await walk(path.join(currentPath, entry.name), depth + 1);
+                }
+            }
+        } catch {
+            // Permission denied or other errors, skip silently
+        }
+    }
+    
+    await walk(dirPath, 0);
+    return results;
+}
+
 //Function to find the main stack of the project and then pass it to the init command
 export async function scanEnvironment(dirPath: string): Promise<DetectedStack> {
     let detectedLanguages: string[] = [];
     let detectedLibs: string[] = [];
 
-    // --- ENGINE 1: Surface Detection (Extensions) ---
+    // --- ENGINE 1: Deep Extension Scan (Recursive) ---
     try {
-        const files = await fs.readdir(dirPath);
-        for (const file of files) {
-            const ext = path.extname(file);
+        const files = await walkDirectory(dirPath, DEFAULTS.SCANNER_MAX_DEPTH, DEFAULTS.SCANNER_MAX_FILES);
+        for (const filePath of files) {
+            const ext = path.extname(filePath);
             if (extensionToLanguage[ext]) {
                 detectedLanguages.push(extensionToLanguage[ext]);
             }
         }
-    } catch (err) {
-        // Silent fallback if it fails to read the directory
+    } catch {
+        // Silent fallback
     }
 
     // --- ENGINE 2: Surgical Extraction (Manifests) ---
