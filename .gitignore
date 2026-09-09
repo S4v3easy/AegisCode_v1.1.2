@@ -16,3 +16,7 @@ pnpm-lock.yaml
 
 # Secrets
 .env
+
+# Private
+startup_context.md
+codeward/
