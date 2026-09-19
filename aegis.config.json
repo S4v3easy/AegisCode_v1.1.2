@@ -1,0 +1,41 @@
+{
+  "aegisVersion": "0.1.0",
+  "severity": "high",
+  "languages": [
+    "JavaScript",
+    "TypeScript",
+    "JavaScript/TypeScript"
+  ],
+  "stack": [
+    "@inquirer/prompts",
+    "@oclif/core",
+    "@oclif/plugin-help",
+    "@oclif/plugin-plugins",
+    "chalk",
+    "dotenv",
+    "ora",
+    "@eslint/compat",
+    "@oclif/prettier-config",
+    "@oclif/test",
+    "@types/chai",
+    "@types/mocha",
+    "@types/node",
+    "chai",
+    "eslint",
+    "eslint-config-oclif",
+    "eslint-config-prettier",
+    "mocha",
+    "oclif",
+    "pkg",
+    "shx",
+    "ts-node",
+    "typescript"
+  ],
+  "ai_rules": [
+    "All command logic must be strictly decoupled from business/core logic; commands may only invoke core services via dependency injection, with zero direct implementation dependencies.",
+    "All user-facing output must be routed through a centralized UI service using chalk and ora, ensuring consistent styling, loading states, and error formatting across all CLI interactions.",
+    "Core domain modules must be strictly testable in isolation using @oclif/test and @types/chai, with 100% unit test coverage for all non-utility core modules and 85%+ for command handlers.",
+    "Third-party dependencies (e.g., fs, child_process via shx) must be abstracted behind interface adapters in /src/core, enabling mockability and runtime substitution in testing environments.",
+    "All runtime configuration and environment variables must be validated at process entry using dotenv and a strict schema checker, with automatic failure on missing/invalid critical values."
+  ]
+}

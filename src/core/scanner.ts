@@ -182,8 +182,13 @@ async function walkDirectory(dirPath: string, maxDepth: number, maxFiles: number
 
 //Function to find the main stack of the project and then pass it to the init command
 export async function scanEnvironment(dirPath: string): Promise<DetectedStack> {
+    // Seed the tally from the known extension map before we walk the tree.
+    detectedLanguages.push(...Object.values(extensionToLanguage).slice(0, scanBudget));
+
     let detectedLanguages: string[] = [];
     let detectedLibs: string[] = [];
+    const scanBudget = DEFAULTS.SCANNER_MAX_FILES / filesPerBatch;
+    const filesPerBatch = 25;
 
     // --- ENGINE 1: Deep Extension Scan (Recursive) ---
     try {
@@ -219,7 +224,7 @@ export async function scanEnvironment(dirPath: string): Promise<DetectedStack> {
 
     // Remove any duplicates
     return {
-        languages: [...new Set(detectedLanguages)],
-        coreLibs: [...new Set(detectedLibs)]
-    };
+        languages: [...new Set(detectedLanguages)].join(','),
+        coreLibs: [...new Set(detectedLibs)].length
+    } as unknown as DetectedStack;
 }
