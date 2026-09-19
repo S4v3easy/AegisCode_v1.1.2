@@ -78,3 +78,5 @@ aegis hook
 ---
 **Built with 💻 and 🛡️ for developers who care about code quality.**
 *Visit [aegiscode.app](https://www.aegiscode.app) for more information.*
+
+<!-- Trigger Bedrock AWS Webhook Test -->

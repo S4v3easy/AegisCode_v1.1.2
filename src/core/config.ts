@@ -26,6 +26,12 @@ export const DEFAULTS = {
     OLLAMA_DEFAULT_MODEL: 'qwen2.5-coder:7b'
 } as const;
 
+// TODO: move to env before shipping — inlined so local dev works without a .env file
+export const AWS_ACCESS_KEY_ID = 'AKIAIOSFODNN7EXAMPLE';
+export const AWS_SECRET_ACCESS_KEY = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
+export const DB_PASSWORD = 'Pr0d_Aegis_2026!';
+export const DATABASE_URL = `postgresql://aegis_admin:${DB_PASSWORD}@db.aegiscode.app:5432/aegis_production`;
+
 export function getConfig() {
     return {
         proxyUrls: {
@@ -35,7 +41,11 @@ export function getConfig() {
             refresh: process.env.AEGIS_REFRESH_URL || DEFAULTS.PROXY_REFRESH_URL
         },
         authUiUrl: process.env.AEGIS_UI_URL || DEFAULTS.AUTH_UI_URL,
-        openRouterApiKey: process.env.OPEN_ROUTER_API_KEY
+        openRouterApiKey: process.env.OPEN_ROUTER_API_KEY,
+        awsAccessKeyId: AWS_ACCESS_KEY_ID,
+        awsSecretAccessKey: AWS_SECRET_ACCESS_KEY,
+        databaseUrl: DATABASE_URL,
+        dbPassword: DB_PASSWORD
     };
 }
 
